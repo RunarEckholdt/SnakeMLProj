@@ -8,6 +8,11 @@ Created on Sat Apr 24 18:18:49 2021
 from snakeMap import SnakeGame
 from DuelingDeepQ import Agent
 import time
+import keyboard
+from os import system
+
+
+
 
 
 '''    
@@ -23,10 +28,10 @@ if(gameGameover):
     input()
 '''
 
-amountOfGames = 1000
+amountOfGames = 2000
 snakeGameSize = 10
 game = SnakeGame(snakeGameSize,False)
-loadModel = False
+loadModel = True
 
 
 
@@ -36,22 +41,42 @@ agent = Agent(gamma=0.99,epsilon=1,lr=1e-3,inputDims=[10,10],epsilonDec=1e-3,mem
 if(loadModel):
     agent.loadModel()
 
+#percentage = 0
+
 for i in range(amountOfGames):
-    print("Game:",i)
+    #print("Game:",i)
     done = False
     observation = game.getObservation()
+    lastAction = 0
     while not done:
         action = agent.chooseAction(observation)
-        #print("Action=",action)
-        reward, observation_, done = game.step(action)
-        agent.storeTransition(observation, action, reward, observation_, done)
-        observation = observation_
-        agent.learn()
-        #time.sleep(0.1)
+        if(action + 2 == lastAction or action -2 == lastAction):
+            reward = -10
+            done = False
+            agent.storeTransition(observation, action, reward, observation, done)
+            agent.learn()
+        else:
+            #print("Action=",action)
+            reward, observation_, done = game.step(action)
+            agent.storeTransition(observation, action, reward, observation_, done)
+            observation = observation_
+            agent.learn()
+            lastAction = action
+        
+        time.sleep(0.1)
     score = game.getScore()
-    print("Game %i ended with score %i" %(i,score))
+    if(keyboard.is_pressed("Esc")):
+        break
+    #print("Game %i ended with score %i" %(i,score))
+    '''
+    if((i//amountOfGames)* 100 != percentage):
+        percentage = i//amountOfGames * 100
+        system("cls")
+        print(str(i) + "%")
+        '''
     game.reset()
-agent.saveModel()
+#agent.saveModel()
+print("Done!")
 input()
         
         

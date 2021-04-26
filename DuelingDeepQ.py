@@ -77,6 +77,7 @@ class ReplayBuffer():
     def sampleBuffer(self, batchSize):
         maxMemory = min(self.memCntr,self.memSize)
         batch = np.random.choice(maxMemory,batchSize,replace=False)
+        print("Batch:",batch)
         states = self.stateMemory[batch]
         newStates = self.newStateMemory[batch]
         actions = self.actionMemory[batch]
@@ -95,7 +96,7 @@ class ReplayBuffer():
     
 class Agent():
     def __init__(self,lr,gamma,nActions,epsilon,batchSize,inputDims,epsilonDec=1e-3,epsilonMin=0.01
-                 ,memSize=100000, fname='dueling_dqn.keras',fc1Dims=128,fc2Dims=128,replace=100):
+                 ,memSize=100000, fname='dueling_dqn',fc1Dims=128,fc2Dims=128,replace=100):
         self.actionSpace = [i for i in range(nActions)]
         self.gamma = gamma
         self.epsilon = epsilon
@@ -137,8 +138,21 @@ class Agent():
         
         states,actions,rewards,states_, dones = self.memory.sampleBuffer(self.batchSize)
         
+        #predicting the q values for states_
         qPred = self.qEval(states)
-        qNext = tf.math.reduce_max(self.qNext(states_), axis=1, keepdims=True).numpy()
+        
+        
+        time.sleep(5)
+        #predicting future rewards
+        qNext = self.qNext(states_)
+        print(qNext)
+        print()
+        time.sleep(5)
+        
+        #getting the maximum reward from each state reward prediction
+        qNext = tf.math.reduce_max(qNext, axis=1, keepdims=True).numpy()
+        
+        
         qTarget = np.copy(qPred)
         #print(dones)
         #print(actions)
@@ -148,10 +162,14 @@ class Agent():
             #print(idx)
             if terminal:
                 qNext[idx] = 0.0
-            qTarget[idx,actions[idx]] = rewards[idx] + self.gamma*qNext[idx]
+            qTarget[idx][actions[idx]] = rewards[idx] + self.gamma*qNext[idx]
         
         #print(states)
-        #print(qTarget)
+        print(qNext)
+        time.sleep(5)
+        print()
+        print(qTarget)
+        time.sleep(5)
         self.qEval.train_on_batch(states,qTarget)
         #time.sleep(2)
         self.epsilon = self.epsilon - self.epsilonDec if self.epsilon > self.epsilonMin else self.epsilonMin
@@ -159,7 +177,8 @@ class Agent():
         self.learnStepCounter += 1
         
     def saveModel(self):
-        self.qEval.save_weights(self.fname,overwrite=True,save_format="tf")
+        self.qEval.save_weights(self.fname,save_format="tf")
+        
         
     def loadModel(self):
-        self.qEval = kModel.load_weights(self.fname)
+        self.qEval.load_weights(self.fname)

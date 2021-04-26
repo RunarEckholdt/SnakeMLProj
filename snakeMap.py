@@ -137,13 +137,14 @@ class SnakeMap:
         self.__updateSnake()
         #print(newPosition,self.__fruit.getPosition())
         if(newPosition == self.__fruit.getPosition()):
-            additionalScore = 100
+            additionalScore = 1000
             #print("Fruit eaten!")
             self.__snake.eatFruit()
             while True:
                 if(self.__atPos(self.__fruit.newPosition()) == self.__mapValues["empty"]):
                     self.__updateFruit()
                     break
+        self.__updateFruit()
         return additionalScore
         
             
@@ -240,9 +241,9 @@ class SnakeGame:
         done = self.__snakeMap.isGameOver()
         
         self.__score += reward
-        #system('cls')
-        #print("Score:",self.__score)
-        #print(self.__snakeMap)
+        system('cls')
+        print("Score:",self.__score)
+        print(self.__snakeMap)
         #print(done)
         return reward,newMap,done
     
