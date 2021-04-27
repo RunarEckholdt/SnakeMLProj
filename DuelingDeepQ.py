@@ -14,15 +14,24 @@ import tensorflow.keras.models as kModel
 import time
 
 
+physical_devices = tf.config.list_physical_devices('GPU')
+try:
+  tf.config.experimental.set_memory_growth(physical_devices[0], True)
+except:
+  # Invalid device or cannot modify virtual devices once initialized.
+  pass
 
 
+#tf.config.gpu_options.allow_growth = True
 
-class DuelingDeepQNetwork(keras.Model):
-    def __init__(self,nActions,fc1Dims,fc2Dims):
-        super(DuelingDeepQNetwork,self).__init__()
-        self.inputLayer = keras.layers.Flatten(input_shape=(10,10),dtype=np.int32)
-        self.dense1 = keras.layers.Dense(fc1Dims,activation='relu')
-        self.dense2 = keras.layers.Dense(fc2Dims,activation='relu')
+
+class DeepQNetwork(keras.Model):
+    def __init__(self,nActions,inputShape,fc1Dims,fc2Dims,fc3Dims):
+        super(DeepQNetwork,self).__init__()
+        self.inputLayer = keras.layers.Flatten(input_shape=inputShape,dtype=np.int32)
+        self.dense1 = keras.layers.Dense(fc1Dims,activation='sigmoid')
+        self.dense2 = keras.layers.Dense(fc2Dims,activation='sigmoid')
+        self.dense3 = keras.layers.Dense(fc3Dims,activation='sigmoid')
         self.V = keras.layers.Dense(1,activation=None)
         self.A = keras.layers.Dense(nActions,activation=None)
     
@@ -30,6 +39,7 @@ class DuelingDeepQNetwork(keras.Model):
         x = self.inputLayer(state)
         x = self.dense1(x)
         x = self.dense2(x)
+        x = self.dense3(x)
         V = self.V(x)
         A = self.A(x)
         
@@ -42,6 +52,7 @@ class DuelingDeepQNetwork(keras.Model):
         x = self.inputLayer(state)
         x = self.dense1(x)
         x = self.dense2(x)
+        x = self.dense3(x)
         A = self.A(x)
         return A
 
@@ -54,7 +65,7 @@ class ReplayBuffer():
     def __init__(self,maxSize,inputShape):
         self.memSize = maxSize
         self.memCntr = 0
-        self.stateMemory = np.zeros((self.memSize, *inputShape),dtype=np.int32)
+        self.stateMemory = np.zeros((self.memSize,*inputShape),dtype=np.int32)
         self.newStateMemory = np.zeros((self.memSize,*inputShape),dtype=np.int32)
         
         self.actionMemory = np.zeros(self.memSize,dtype=np.int32)
@@ -66,6 +77,7 @@ class ReplayBuffer():
         index = self.memCntr % self.memSize
         #print(reward)
         #print(index)
+        #print(state)
         self.stateMemory[index] = state
         self.newStateMemory[index] = state_
         self.rewardMemory[index] = reward
@@ -77,7 +89,7 @@ class ReplayBuffer():
     def sampleBuffer(self, batchSize):
         maxMemory = min(self.memCntr,self.memSize)
         batch = np.random.choice(maxMemory,batchSize,replace=False)
-        print("Batch:",batch)
+        #print("Batch:",batch)
         states = self.stateMemory[batch]
         newStates = self.newStateMemory[batch]
         actions = self.actionMemory[batch]
@@ -96,7 +108,7 @@ class ReplayBuffer():
     
 class Agent():
     def __init__(self,lr,gamma,nActions,epsilon,batchSize,inputDims,epsilonDec=1e-3,epsilonMin=0.01
-                 ,memSize=100000, fname='dueling_dqn',fc1Dims=128,fc2Dims=128,replace=100):
+                 ,memSize=10000, fname='dueling_dqn',fc1Dims=128,fc2Dims=128,fc3Dims=256,replace=100):
         self.actionSpace = [i for i in range(nActions)]
         self.gamma = gamma
         self.epsilon = epsilon
@@ -108,11 +120,10 @@ class Agent():
         
         self.learnStepCounter = 0
         self.memory = ReplayBuffer(memSize,inputDims)
-        self.qEval = DuelingDeepQNetwork(nActions,fc1Dims,fc2Dims)
-        self.qNext = DuelingDeepQNetwork(nActions,fc1Dims,fc2Dims)
+        self.qEval = DeepQNetwork(nActions,inputDims,fc1Dims,fc2Dims,fc3Dims)
+        self.qNext = DeepQNetwork(nActions,inputDims,fc1Dims,fc2Dims,fc3Dims)
         
         self.qEval.compile(optimizer=kOptimizers.Adam(learning_rate=lr),loss='mean_squared_error')
-        
         self.qNext.compile(optimizer=kOptimizers.Adam(learning_rate=lr),loss='mean_squared_error')
         
     def storeTransition(self,state,action,reward,newState,done):
@@ -133,8 +144,11 @@ class Agent():
         if(self.memory.memCntr < self.batchSize):
             return
         
+        
+        #if it has learned x amount of times, put main network's weights into the qNext network
         if(self.learnStepCounter % self.replace == 0):
             self.qNext.set_weights(self.qEval.get_weights())
+        
         
         states,actions,rewards,states_, dones = self.memory.sampleBuffer(self.batchSize)
         
@@ -142,12 +156,12 @@ class Agent():
         qPred = self.qEval(states)
         
         
-        time.sleep(5)
+        #time.sleep(5)
         #predicting future rewards
         qNext = self.qNext(states_)
-        print(qNext)
-        print()
-        time.sleep(5)
+        #print(qNext)
+        #print()
+        #time.sleep(5)
         
         #getting the maximum reward from each state reward prediction
         qNext = tf.math.reduce_max(qNext, axis=1, keepdims=True).numpy()
@@ -165,11 +179,11 @@ class Agent():
             qTarget[idx][actions[idx]] = rewards[idx] + self.gamma*qNext[idx]
         
         #print(states)
-        print(qNext)
-        time.sleep(5)
-        print()
-        print(qTarget)
-        time.sleep(5)
+        #print(qNext)
+        #time.sleep(5)
+        #print()
+        #print(qTarget)
+        #time.sleep(5)
         self.qEval.train_on_batch(states,qTarget)
         #time.sleep(2)
         self.epsilon = self.epsilon - self.epsilonDec if self.epsilon > self.epsilonMin else self.epsilonMin

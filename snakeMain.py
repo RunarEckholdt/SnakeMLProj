@@ -31,12 +31,12 @@ if(gameGameover):
 amountOfGames = 2000
 snakeGameSize = 10
 game = SnakeGame(snakeGameSize,False)
-loadModel = True
+loadModel = False
 
 
 
-agent = Agent(gamma=0.99,epsilon=1,lr=1e-3,inputDims=[10,10],epsilonDec=1e-3,memSize=100000,
-              batchSize=64,epsilonMin=0.01,fc1Dims=128,fc2Dims=128,replace=100,nActions=4)
+agent = Agent(gamma=0.99,epsilon=1,lr=1e-3,inputDims=(11,10),epsilonDec=1e-3,memSize=100000,
+              batchSize=64,epsilonMin=0.05,fc1Dims=128,fc2Dims=128,replace=100,nActions=3)
 
 if(loadModel):
     agent.loadModel()
@@ -48,20 +48,21 @@ for i in range(amountOfGames):
     done = False
     observation = game.getObservation()
     lastAction = 0
+    direction = 0
     while not done:
         action = agent.chooseAction(observation)
-        if(action + 2 == lastAction or action -2 == lastAction):
-            reward = -10
-            done = False
-            agent.storeTransition(observation, action, reward, observation, done)
-            agent.learn()
-        else:
+        #if(action + 2 == lastAction or action -2 == lastAction):
+            #reward = -10
+            #done = False
+            #agent.storeTransition(observation, action, reward, observation, done)
+            #agent.learn()
+        #else:
             #print("Action=",action)
-            reward, observation_, done = game.step(action)
-            agent.storeTransition(observation, action, reward, observation_, done)
-            observation = observation_
-            agent.learn()
-            lastAction = action
+        reward, observation_, done = game.step(action)
+        agent.storeTransition(observation, action, reward, observation_, done)
+        observation = observation_
+        agent.learn()
+        lastAction = action
         
         time.sleep(0.1)
     score = game.getScore()

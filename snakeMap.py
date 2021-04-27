@@ -14,7 +14,8 @@ from os import system
         
         
 
-
+directionDict = {"up":0,"right":1,"down":2,"left":3}
+vectorToDirectionDict = {(-1,0):0,(0,1):1,(1,0):2,(0,-1):3}
 
 class Fruit:
     def __init__(self,mapSize):
@@ -60,7 +61,7 @@ class Coordinate:
         
 
 class Snake:
-    def __init__(self,startCoordinate):
+    def __init__(self,startCoordinate,startDirection):
         #print("Snake Constructor called")
         if(type(startCoordinate)==Coordinate):
             self.__headPosition = startCoordinate
@@ -69,8 +70,18 @@ class Snake:
         else:
             sCType = str(type(startCoordinate))
             raise Exception("startCoordinate was of type" + sCType)
-        self.__bodyPositions = [Coordinate(self.__headPosition.getY() +1,self.__headPosition.getX())]
-       
+        self.__bodyPositions = []
+        
+        if(startDirection == directionDict["up"]):
+            self.__bodyPositions.append(self.__headPosition + [1,0])
+        elif(startDirection == directionDict["right"]):
+            self.__bodyPositions.append(self.__headPosition + [0,-1])
+        elif(startDirection == directionDict["down"]):
+            self.__bodyPositions.append(self.__headPosition + [-1,0])
+        elif(startDirection == directionDict["left"]):
+            self.__bodyPosition.append(self.__headPosition + [0,1])
+        #self.__bodyPositions = [Coordinate(self.__headPosition.getY() +1,self.__headPosition.getX())]
+        self.__direction = startDirection
         
     def move(self,movement):
         if(type(movement) != list and type(movement) != tuple):
@@ -82,6 +93,8 @@ class Snake:
             self.__bodyPositions[i], lastBodyPosition = lastBodyPosition , self.__bodyPositions[i]
             #print(lastBodyPosition)
         self.__behindTailPosition = lastBodyPosition
+        self.__direction = vectorToDirectionDict[(self.__headPosition.getY()-self.__bodyPositions[0].getY(),
+                                                  self.__headPosition.getX()-self.__bodyPositions[0].getX())]
         return self.__headPosition
         
     
@@ -89,6 +102,9 @@ class Snake:
         self.__bodyPositions.append(self.__behindTailPosition)
         
      
+    def getDirection(self):
+        return self.__direction
+    
     def fetchPositions(self):
         yield self.__headPosition,"h"
         for bodyPosition in self.__bodyPositions:
@@ -111,7 +127,7 @@ class SnakeMap:
             self.__mapValues = {"empty":0,"wall":1,"head":2,"body":3,"fruit":4}
             self.__map = np.full(shape=(size,size),fill_value=0,dtype=np.int32)
         
-        self.__snake = Snake((size-3,size-3))
+        self.__snake = Snake((size-3,size-3),directionDict["up"])
         self.__fruit = Fruit(size)
         self.__size = size
         self.__updateSnake()
@@ -120,16 +136,32 @@ class SnakeMap:
         self.__gameover = False
         
     
-    def doTick(self,movement):
+    def doTick(self,action):
+        snakeDirection = self.__snake.getDirection()
         
-        newPosition = self.__snake.move(movement)
+        if(action == 0):
+            newDirection = (snakeDirection + 5) % 4
+        elif(action == 2):
+            newDirection = (snakeDirection + 1) % 4
+        else:
+            newDirection = snakeDirection
+        
+        if(newDirection  == 0):
+            newPosition = self.__snake.move((-1,0))
+        elif(newDirection  == 1):
+            newPosition = self.__snake.move((0,1))
+        elif(newDirection  == 2):
+            newPosition = self.__snake.move((1,0))   
+        else:
+            newPosition = self.__snake.move((0,-1))     
+        
         additionalScore = 0
         #print(newPosition)
         #print(self.__atPos(newPosition))
         #print(self.__map)
         if(self.__atPos(newPosition) == self.__mapValues["wall"] or self.__atPos(newPosition) == self.__mapValues["body"]):
             self.__gameover = True
-            additionalScore = -10
+            additionalScore = -1000
             
         else:
             self.__changeMap(self.__snake.getOldTailPosition(),self.__mapValues["empty"])
@@ -144,8 +176,10 @@ class SnakeMap:
                 if(self.__atPos(self.__fruit.newPosition()) == self.__mapValues["empty"]):
                     self.__updateFruit()
                     break
+        elif(not self.__gameover):
+            additionalScore = -1
         self.__updateFruit()
-        return additionalScore
+        return additionalScore,self.__snake.getDirection()
         
             
     def getMap(self):
@@ -195,11 +229,13 @@ class SnakeGame:
         self.__direction = self.__directions["up"]
         self.__lastTick = 0
         self.__score = 0
+        self.__gameSize = size
+        self.__snakeDirection = 0
         
         #print(self.__lastTick)
     
     def reset(self):
-        self.__snakeMap = SnakeMap(10,self.__userPlayed)
+        self.__snakeMap = SnakeMap(self.__gameSize,self.__userPlayed)
         self.__direction = self.__directions["up"]
         self.__lastTick = 0
         self.__score = 0
@@ -224,7 +260,9 @@ class SnakeGame:
             print(self.__snakeMap)
             return self.__snakeMap.isGameOver()
         
+    
     def step(self,action):
+        '''
         if(action == 0):
             self.__direction = self.__directions["up"]
         elif(action == 1):
@@ -235,9 +273,15 @@ class SnakeGame:
             self.__direction = self.__directions["left"]
         else:
             raise Exception("Was given invalid action")
+        '''
         
-        reward = self.__snakeMap.doTick(self.__direction)
-        newMap = self.__snakeMap.getMap()
+        
+       
+        
+        reward,self.__snakeDirection = self.__snakeMap.doTick(action)
+        directionObservation = np.zeros(self.__gameSize)
+        directionObservation[self.__snakeDirection] = 1
+        newObservation = np.append(self.__snakeMap.getMap(),[directionObservation],axis=0)
         done = self.__snakeMap.isGameOver()
         
         self.__score += reward
@@ -245,11 +289,13 @@ class SnakeGame:
         print("Score:",self.__score)
         print(self.__snakeMap)
         #print(done)
-        return reward,newMap,done
+        return reward,newObservation,done
     
     
     def getObservation(self):
-        return self.__snakeMap.getMap()
+        directionObservation = np.zeros(self.__gameSize)
+        directionObservation[self.__snakeDirection] = 1
+        return np.append(self.__snakeMap.getMap(),[directionObservation],axis=0)
     
     def getScore(self):
         return self.__score
