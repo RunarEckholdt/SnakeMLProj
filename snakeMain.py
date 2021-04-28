@@ -36,9 +36,11 @@ loadModel = True
 
 
 agent = Agent(gamma=0.92,epsilon=1,lr=1e-3,inputDims=(11,10),epsilonDec=1e-3,memSize=10000,
-              batchSize=64,epsilonMin=0.01,fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100,nActions=3)
+              batchSize=64,epsilonMin=0.07,fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100,nActions=3)
 
 if(loadModel):
+    obs = game.getObservation()
+    agent.prepNetworksForLoad(obs)
     agent.loadModel()
 
 #percentage = 0
@@ -86,12 +88,15 @@ for i in range(amountOfGames):
         print(str(i) + "%")
         '''
     game.reset()
-#agent.saveModel()
+
+
 print("Done!")
 plt.plot(matchNumbers,scores)
 plt.show()
 
-input()
+inp = input("Save model (y/n)").lower()
+if(inp == "y"):
+    agent.saveModel()
         
         
 
