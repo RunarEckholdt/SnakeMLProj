@@ -29,25 +29,25 @@ class DeepQNetwork(keras.Model):
     def __init__(self,nActions,inputShape,fc1Dims,fc2Dims,fc3Dims):
         super(DeepQNetwork,self).__init__()
         self.inputLayer = keras.layers.Flatten(input_shape=inputShape,dtype=np.int32)
-        self.dense1 = keras.layers.Dense(fc1Dims,activation='sigmoid')
-        self.dense2 = keras.layers.Dense(fc2Dims,activation='sigmoid')
-        self.dense3 = keras.layers.Dense(fc3Dims,activation='sigmoid')
-        self.V = keras.layers.Dense(1,activation=None)
-        self.A = keras.layers.Dense(nActions,activation=None)
+        self.denseLayer1 = keras.layers.Dense(fc1Dims,activation='sigmoid')
+        self.denseLayer2 = keras.layers.Dense(fc2Dims,activation='sigmoid')
+        self.denseLayer3 = keras.layers.Dense(fc3Dims,activation='sigmoid')
+        #self.V = keras.layers.Dense(1,activation=None)
+        self.actionLayer = keras.layers.Dense(nActions,activation='linear')
     
     def call(self,state):
         x = self.inputLayer(state)
-        x = self.dense1(x)
-        x = self.dense2(x)
-        x = self.dense3(x)
-        V = self.V(x)
-        A = self.A(x)
+        x = self.denseLayer1(x)
+        x = self.denseLayer2(x)
+        x = self.denseLayer3(x)
+        #V = self.V(x)
+        action = self.actionLayer(x)
         
-        Q = (V + (A - tf.math.reduce_mean(A,axis=1,keepdims=True)))
+        #Q = (V + (A - tf.math.reduce_mean(A,axis=1,keepdims=True)))
         
-        return Q
+        return action
         
-    
+    '''
     def adtantage(self,state):
         x = self.inputLayer(state)
         x = self.dense1(x)
@@ -55,6 +55,7 @@ class DeepQNetwork(keras.Model):
         x = self.dense3(x)
         A = self.A(x)
         return A
+    '''
 
 
 
@@ -108,7 +109,7 @@ class ReplayBuffer():
     
 class Agent():
     def __init__(self,lr,gamma,nActions,epsilon,batchSize,inputDims,epsilonDec=1e-3,epsilonMin=0.01
-                 ,memSize=10000, fname='dueling_dqn',fc1Dims=128,fc2Dims=128,fc3Dims=256,replace=100):
+                 ,memSize=10000, fname='dueling_dqn',fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100):
         self.actionSpace = [i for i in range(nActions)]
         self.gamma = gamma
         self.epsilon = epsilon
@@ -123,6 +124,7 @@ class Agent():
         self.qEval = DeepQNetwork(nActions,inputDims,fc1Dims,fc2Dims,fc3Dims)
         self.qNext = DeepQNetwork(nActions,inputDims,fc1Dims,fc2Dims,fc3Dims)
         
+        
         self.qEval.compile(optimizer=kOptimizers.Adam(learning_rate=lr),loss='mean_squared_error')
         self.qNext.compile(optimizer=kOptimizers.Adam(learning_rate=lr),loss='mean_squared_error')
         
@@ -130,11 +132,16 @@ class Agent():
         self.memory.storeTransition(state,action,reward,newState,done)
         
     def chooseAction(self,observation):
+        state = np.array([observation])
+        networkAction = self.qEval(state)
         if(np.random.random() < self.epsilon):
-            action = np.random.choice(self.actionSpace)
+            while True:
+                action = np.random.choice(self.actionSpace)
+                if action != networkAction:
+                    break
         else:
             state = np.array([observation])
-            actions = self.qEval.adtantage(state)
+            actions = self.qEval(state)
             #print(actions)
             action = tf.math.argmax(actions,axis=1).numpy()[0]
             
@@ -153,7 +160,7 @@ class Agent():
         states,actions,rewards,states_, dones = self.memory.sampleBuffer(self.batchSize)
         
         #predicting the q values for states_
-        qPred = self.qEval(states)
+        
         
         
         #time.sleep(5)
@@ -167,7 +174,7 @@ class Agent():
         qNext = tf.math.reduce_max(qNext, axis=1, keepdims=True).numpy()
         
         
-        qTarget = np.copy(qPred)
+        qTarget = self.qEval(states).numpy()
         #print(dones)
         #print(actions)
         #print(rewards)
@@ -196,3 +203,4 @@ class Agent():
         
     def loadModel(self):
         self.qEval.load_weights(self.fname)
+        self.qNext.set_weights(self.qEval.get_weights())
