@@ -124,7 +124,7 @@ class SnakeMap:
             self.__mapValues = {"empty":" ","wall":"w","head":"h","body":"b","fruit":"f"}
             self.__map = np.full(shape=(size,size),fill_value=" ",dtype=str)
         else:
-            self.__mapValues = {"empty":0,"wall":1,"head":2,"body":3,"fruit":4}
+            self.__mapValues = {"empty":0,"wall":-4,"head":1,"body":-1,"fruit":4}
             self.__map = np.full(shape=(size,size),fill_value=0,dtype=np.int32)
         
         self.__snake = Snake((size-3,size-3),directionDict["up"])
@@ -261,7 +261,7 @@ class SnakeGame:
             return self.__snakeMap.isGameOver()
         
     
-    def step(self,action):
+    def step(self,action,doPrint):
         '''
         if(action == 0):
             self.__direction = self.__directions["up"]
@@ -285,10 +285,10 @@ class SnakeGame:
         done = self.__snakeMap.isGameOver()
         
         self.__score += reward
-        system('cls')
-        print("Score:",self.__score)
-        print(self.__snakeMap)
-        #print(done)
+        if doPrint:
+            system('cls')
+            print("Score:",self.__score)
+            print(self.__snakeMap)
         return reward,newObservation,done
     
     
