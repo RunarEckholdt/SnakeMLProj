@@ -5,8 +5,8 @@ Created on Sat Apr 24 18:18:49 2021
 @author: Runar
 """
 
-from snakeMap import SnakeGame
-from DuelingDeepQ import Agent
+from SnakeGame import SnakeGame
+from DeepQAgent import Agent
 import time
 import keyboard
 from os import system
@@ -28,16 +28,19 @@ if(gameGameover):
     input()
 '''
 
-amountOfGames = 3000
+amountOfGames = 4000
 snakeGameSize = 10
 game = SnakeGame(snakeGameSize,False)
-loadModel = True
+loadModel = False
+
+#memSize 5000 gamma .92 epsilonMin .07 no sucsess
 
 
+agent = Agent(gamma=0.99,epsilon=1,lr=1e-3,inputDims=(11,10),epsilonDec=1e-3,memSize=10000,
+              batchSize=64,epsilonMin=0.1,fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100,nActions=3)
 
-agent = Agent(gamma=0.92,epsilon=1,lr=1e-3,inputDims=(11,10),epsilonDec=1e-3,memSize=10000,
-              batchSize=64,epsilonMin=0.01,fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100,nActions=3)
-
+obs = game.getObservation()
+agent.prepNetworksForLoad(obs)
 if(loadModel):
     agent.loadModel()
 
@@ -64,6 +67,11 @@ for i in range(amountOfGames):
         doPrint = False
     '''
     while not done:
+        if(keyboard.is_pressed('p')):
+            doPrint = True
+        else:
+            doPrint = False
+        
         action = agent.chooseAction(observation)
         
         reward, observation_, done = game.step(action,doPrint)
@@ -86,12 +94,16 @@ for i in range(amountOfGames):
         print(str(i) + "%")
         '''
     game.reset()
-#agent.saveModel()
+
+
 print("Done!")
-plt.plot(matchNumbers,scores)
+plt.plot(matchNumbers,scores,'bo')
 plt.show()
 
-input()
+inp = input("Save model (y/n)").lower()
+if(inp == "y"):
+    agent.saveModel()
+
         
         
 

@@ -14,9 +14,10 @@ import tensorflow.keras.models as kModel
 import time
 
 
-physical_devices = tf.config.list_physical_devices('GPU')
+
 try:
-  tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 except:
   # Invalid device or cannot modify virtual devices once initialized.
   pass
@@ -28,6 +29,11 @@ except:
 class DeepQNetwork(keras.Model):
     def __init__(self,nActions,inputShape,fc1Dims,fc2Dims,fc3Dims):
         super(DeepQNetwork,self).__init__()
+        self.nActions = nActions
+        self.inputShape = inputShape
+        self.fc1Dims = fc1Dims
+        self.fc2Dims = fc2Dims
+        self.fc3Dims = fc3Dims
         self.inputLayer = keras.layers.Flatten(input_shape=inputShape,dtype=np.int32)
         self.denseLayer1 = keras.layers.Dense(fc1Dims,activation='sigmoid')
         self.denseLayer2 = keras.layers.Dense(fc2Dims,activation='sigmoid')
@@ -46,6 +52,9 @@ class DeepQNetwork(keras.Model):
         #Q = (V + (A - tf.math.reduce_mean(A,axis=1,keepdims=True)))
         
         return action
+    
+    def get_config(self):
+        return {"nActions":self.nActions,"inputShape":self.inputShape,"fc1Dims":self.fc1Dims,"fc2Dims":self.fc2Dims,"fc3Dims":self.fc3Dims}
         
     '''
     def adtantage(self,state):
@@ -134,6 +143,7 @@ class Agent():
     def chooseAction(self,observation):
         state = np.array([observation])
         networkAction = self.qEval(state)
+        networkAction = tf.math.argmax(networkAction).numpy()[0]
         if(np.random.random() < self.epsilon):
             while True:
                 action = np.random.choice(self.actionSpace)
@@ -141,9 +151,10 @@ class Agent():
                     break
         else:
             state = np.array([observation])
-            actions = self.qEval(state)
+            action = networkAction
+            #actions = self.qEval(net)
             #print(actions)
-            action = tf.math.argmax(actions,axis=1).numpy()[0]
+            #action = tf.math.argmax(actions,axis=1).numpy()[0]
             
         return action
     
@@ -154,6 +165,7 @@ class Agent():
         
         #if it has learned x amount of times, put main network's weights into the qNext network
         if(self.learnStepCounter % self.replace == 0):
+            #print(self.qEval.get_weights())
             self.qNext.set_weights(self.qEval.get_weights())
         
         
@@ -200,7 +212,15 @@ class Agent():
     def saveModel(self):
         self.qEval.save_weights(self.fname,save_format="tf")
         
+    def prepNetworksForLoad(self,observation):
+        observation = np.array([observation])
+        self.qEval(observation)
+        self.qNext(observation)
         
     def loadModel(self):
+        #print("Before loading: \n")
+        #print(self.qEval.get_weights())
         self.qEval.load_weights(self.fname)
-        self.qNext.set_weights(self.qEval.get_weights())
+        #print("\n\n\n After loading: \n")
+        #print(self.qEval.get_weights())
+        #self.qNext.set_weights(self.qEval.get_weights())
