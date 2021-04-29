@@ -119,7 +119,7 @@ class ReplayBuffer():
 class Agent():
     def __init__(self,lr,gamma,nActions,epsilon,batchSize,inputDims,epsilonDec=1e-3,epsilonMin=0.01
                  ,memSize=10000, fname='dueling_dqn',fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100):
-        self.actionSpace = [i for i in range(nActions)]
+        self.actionSpace = np.array([i for i in range(nActions)])
         self.gamma = gamma
         self.epsilon = epsilon
         self.epsilonDec = epsilonDec
@@ -145,10 +145,9 @@ class Agent():
         networkAction = self.qEval(state)
         networkAction = tf.math.argmax(networkAction).numpy()[0]
         if(np.random.random() < self.epsilon):
-            while True:
-                action = np.random.choice(self.actionSpace)
-                if action != networkAction:
-                    break
+            #chose random action that is not the same as networkAction
+            action = np.random.choice(self.actionSpace[self.actionSpace != networkAction])
+            
         else:
             state = np.array([observation])
             action = networkAction
@@ -171,40 +170,34 @@ class Agent():
         
         states,actions,rewards,states_, dones = self.memory.sampleBuffer(self.batchSize)
         
-        #predicting the q values for states_
+
         
         
         
-        #time.sleep(5)
+
         #predicting future rewards
         qNext = self.qNext(states_)
-        #print(qNext)
-        #print()
-        #time.sleep(5)
+        
         
         #getting the maximum reward from each state reward prediction
         qNext = tf.math.reduce_max(qNext, axis=1, keepdims=True).numpy()
         
-        
+        #predictiong q values for states before action
         qTarget = self.qEval(states).numpy()
-        #print(dones)
-        #print(actions)
-        #print(rewards)
-        #print(self.gamma)
+        
+        
+        
+        #itterates over each sample changing the q value for each action done
+        # to be de possible best outcome of future actions
         for idx,terminal in enumerate(dones):
             #print(idx)
             if terminal:
                 qNext[idx] = 0.0
             qTarget[idx][actions[idx]] = rewards[idx] + self.gamma*qNext[idx]
         
-        #print(states)
-        #print(qNext)
-        #time.sleep(5)
-        #print()
-        #print(qTarget)
-        #time.sleep(5)
+        
         self.qEval.train_on_batch(states,qTarget)
-        #time.sleep(2)
+        
         self.epsilon = self.epsilon - self.epsilonDec if self.epsilon > self.epsilonMin else self.epsilonMin
         
         self.learnStepCounter += 1
@@ -224,3 +217,17 @@ class Agent():
         #print("\n\n\n After loading: \n")
         #print(self.qEval.get_weights())
         #self.qNext.set_weights(self.qEval.get_weights())
+        
+        
+        
+    def changeEpsMin(self,value):
+        self.epsilonMin = value
+        
+    
+    
+    
+    
+    
+    
+    
+    
