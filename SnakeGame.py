@@ -130,10 +130,14 @@ class SnakeMap:
         self.mapValues = {"empty":0,"wall":-4,"head":1,"body":-1,"fruit":4}
         self.__map = np.full(shape=(size,size),fill_value=0,dtype=np.int32)
         self.mapValuesP = {self.mapValues["empty"]:" ",
-                           self.mapValues["wall"]:"w",
-                           self.mapValues["head"]:"h",
-                           self.mapValues["body"]:"b",
-                           self.mapValues["fruit"]:"f"}
+                           self.mapValues["wall"]: "W",
+                           self.mapValues["head"]: "H",
+                           self.mapValues["body"]: "B",
+                           self.mapValues["fruit"]:"F"}
+                           # self.mapValues["wall"]: "\U000026F0",
+                           # self.mapValues["head"]: "\U0001F40D",
+                           # self.mapValues["body"]: "\U0001FAD1",
+                           # self.mapValues["fruit"]:"\U0001F34E"}
         
         self.snake = Snake((size-3,size-3),directionDict["up"])
         self.__fruit = Fruit(size)
@@ -147,11 +151,13 @@ class SnakeMap:
     
     def doTick(self,action):
         snakeDirection = self.snake.getDirection()
-        
+        #if left
         if(action == 0):
             newDirection = (snakeDirection + 3) % 4
+        #if right
         elif(action == 2):
             newDirection = (snakeDirection + 1) % 4
+        #forward
         else:
             newDirection = snakeDirection
         
@@ -165,9 +171,7 @@ class SnakeMap:
             newPosition = self.snake.move((0,-1))     
         
         additionalScore = 0
-        #print(newPosition)
-        #print(self.__atPos(newPosition))
-        #print(self.__map)
+        
         if(self.__atPos(newPosition) == self.mapValues["wall"] or self.__atPos(newPosition) == self.mapValues["body"]):
             self.__gameover = True
             additionalScore = -1000
@@ -176,10 +180,10 @@ class SnakeMap:
             self.__changeMap(self.snake.getOldTailPosition(),self.mapValues["empty"])
             
         self.__updateSnake()
-        #print(newPosition,self.__fruit.getPosition())
+       
         if(newPosition == self.__fruit.getPosition()):
             additionalScore = 1000
-            #print("Fruit eaten!")
+
             self.fruitsEaten += 1
             self.snake.eatFruit()
             while True:
@@ -244,7 +248,6 @@ class SnakeMap:
     
 class SnakeGame:
     def __init__(self,size,userPlayed):
-        #print("Snake Game Constructor called")
         self.__userPlayed = userPlayed
         self.__snakeMap = SnakeMap(size,userPlayed)
         self.__directions={"up":(-1,0),"down":(1,0),"left":(0,-1),"right":(0,1)}
@@ -254,7 +257,6 @@ class SnakeGame:
         self.__gameSize = size
         self.__snakeDirection = 0
         
-        #print(self.__lastTick)
     
     def reset(self):
         self.__snakeMap = SnakeMap(self.__gameSize,self.__userPlayed)
@@ -287,9 +289,7 @@ class SnakeGame:
         
         
         reward,self.__snakeDirection = self.__snakeMap.doTick(action)
-        #directionObservation = np.zeros(self.__gameSize)
-        #directionObservation[self.__snakeDirection] = 1
-        #newObservation = np.append(self.__snakeMap.getMap(),[directionObservation],axis=0)
+
         done = self.__snakeMap.isGameOver()
         
         newObservation = self.getObservation()
@@ -315,6 +315,9 @@ class SnakeGame:
     
     def getFruitsEaten(self):
         return self.__snakeMap.fruitsEaten    
+    
+    def printMap(self):
+        print(self.__snakeMap)
             
             
         

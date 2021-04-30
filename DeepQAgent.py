@@ -167,7 +167,7 @@ class Agent():
     def storeTransition(self,state,action,reward,newState,done):
         self.memory.storeTransition(state,action,reward,newState,done)
         
-    def chooseAction(self,observation):
+    def chooseAction(self,observation,returnQ):
         state = np.array([observation])
         networkActionQ = self.qEval(state)[0]
         networkAction = tf.math.argmax(networkActionQ).numpy()
@@ -182,7 +182,7 @@ class Agent():
             #print(actions)
             #action = tf.math.argmax(actions,axis=1).numpy()[0]
             
-        return action,networkActionQ.numpy()[action]
+        return action,networkActionQ.numpy()[action] if returnQ else action
     
     def learn(self):
         if(self.memory.memCntr < self.batchSize):
