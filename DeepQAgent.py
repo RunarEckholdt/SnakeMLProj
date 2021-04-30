@@ -13,8 +13,8 @@ import numpy as np
 import tensorflow.keras.models as kModel
 import time
 
-
-
+#print(tf.__version__)
+#input()
 try:
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -25,19 +25,44 @@ except:
 
 #tf.config.gpu_options.allow_growth = True
 
+class DeepQNetworkConv(keras.Model):
+    def __init__(self,nActions,inputShape):
+        super(DeepQNetworkConv,self).__init__()
+        self.nActions = nActions
+        self.inputShape = inputShape
+        self.convLayer1 = keras.layers.Conv1D(filters=10,kernel_size=5,strides=1,input_shape=inputShape,activation='relu',dtype=tf.float32)
+        self.convLayer2 = keras.layers.Conv1D(filters=20,kernel_size=2,strides=1,activation='relu')
+        self.flatten = keras.layers.Flatten()
+        self.fc1 = keras.layers.Dense(256)
+        self.actL1 = keras.layers.LeakyReLU(alpha=0.7)
+        self.fc2 = keras.layers.Dense(128)
+        self.actL2 = keras.layers.LeakyReLU(alpha=0.7)
+        self.actionLayer = keras.layers.Dense(nActions,activation='linear')
+        
+    def call(self,state):
+        x = self.convLayer1(state)
+        x = self.convLayer2(x)
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.actL1(x)
+        x = self.fc2(x)
+        x = self.actL2(x)
+        action = self.actionLayer(x)
+        return action
+    
+    def get_config(self):
+        return {"nActions":self.nActions,"inputShape":self.inputShape}
+        
 
 class DeepQNetwork(keras.Model):
-    def __init__(self,nActions,inputShape,fc1Dims,fc2Dims,fc3Dims):
+    def __init__(self,nActions,inputShape):
         super(DeepQNetwork,self).__init__()
         self.nActions = nActions
         self.inputShape = inputShape
-        self.fc1Dims = fc1Dims
-        self.fc2Dims = fc2Dims
-        self.fc3Dims = fc3Dims
         self.inputLayer = keras.layers.Flatten(input_shape=inputShape,dtype=np.int32)
-        self.denseLayer1 = keras.layers.Dense(fc1Dims,activation='sigmoid')
-        self.denseLayer2 = keras.layers.Dense(fc2Dims,activation='sigmoid')
-        self.denseLayer3 = keras.layers.Dense(fc3Dims,activation='sigmoid')
+        self.denseLayer1 = keras.layers.Dense(256,activation='LeakyReLU')
+        self.denseLayer2 = keras.layers.Dense(256,activation='LeakyReLU')
+        self.denseLayer3 = keras.layers.Dense(128,activation='LeakyReLU')
         #self.V = keras.layers.Dense(1,activation=None)
         self.actionLayer = keras.layers.Dense(nActions,activation='linear')
     
@@ -53,8 +78,10 @@ class DeepQNetwork(keras.Model):
         
         return action
     
+        
+    
     def get_config(self):
-        return {"nActions":self.nActions,"inputShape":self.inputShape,"fc1Dims":self.fc1Dims,"fc2Dims":self.fc2Dims,"fc3Dims":self.fc3Dims}
+        return {"nActions":self.nActions,"inputShape":self.inputShape}
         
     '''
     def adtantage(self,state):
@@ -75,8 +102,8 @@ class ReplayBuffer():
     def __init__(self,maxSize,inputShape):
         self.memSize = maxSize
         self.memCntr = 0
-        self.stateMemory = np.zeros((self.memSize,*inputShape),dtype=np.int32)
-        self.newStateMemory = np.zeros((self.memSize,*inputShape),dtype=np.int32)
+        self.stateMemory = np.zeros((self.memSize,*inputShape),dtype=np.float32)
+        self.newStateMemory = np.zeros((self.memSize,*inputShape),dtype=np.float32)
         
         self.actionMemory = np.zeros(self.memSize,dtype=np.int32)
         self.rewardMemory = np.zeros(self.memSize,dtype=np.int32)
@@ -118,7 +145,7 @@ class ReplayBuffer():
     
 class Agent():
     def __init__(self,lr,gamma,nActions,epsilon,batchSize,inputDims,epsilonDec=1e-3,epsilonMin=0.01
-                 ,memSize=10000, fname='dueling_dqn',fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100):
+                 ,memSize=10000, fname='dueling_dqn',replace=100,network=DeepQNetwork):
         self.actionSpace = np.array([i for i in range(nActions)])
         self.gamma = gamma
         self.epsilon = epsilon
@@ -130,8 +157,8 @@ class Agent():
         
         self.learnStepCounter = 0
         self.memory = ReplayBuffer(memSize,inputDims)
-        self.qEval = DeepQNetwork(nActions,inputDims,fc1Dims,fc2Dims,fc3Dims)
-        self.qNext = DeepQNetwork(nActions,inputDims,fc1Dims,fc2Dims,fc3Dims)
+        self.qEval = network(nActions,inputDims)
+        self.qNext = network(nActions,inputDims)
         
         
         self.qEval.compile(optimizer=kOptimizers.Adam(learning_rate=lr),loss='mean_squared_error')
@@ -142,8 +169,8 @@ class Agent():
         
     def chooseAction(self,observation):
         state = np.array([observation])
-        networkAction = self.qEval(state)
-        networkAction = tf.math.argmax(networkAction).numpy()[0]
+        networkActionQ = self.qEval(state)[0]
+        networkAction = tf.math.argmax(networkActionQ).numpy()
         if(np.random.random() < self.epsilon):
             #chose random action that is not the same as networkAction
             action = np.random.choice(self.actionSpace[self.actionSpace != networkAction])
@@ -155,7 +182,7 @@ class Agent():
             #print(actions)
             #action = tf.math.argmax(actions,axis=1).numpy()[0]
             
-        return action
+        return action,networkActionQ.numpy()[action]
     
     def learn(self):
         if(self.memory.memCntr < self.batchSize):
@@ -224,7 +251,7 @@ class Agent():
         self.epsilonMin = value
         
     
-    
+   
     
     
     

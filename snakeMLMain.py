@@ -7,6 +7,7 @@ Created on Sat Apr 24 18:18:49 2021
 
 from SnakeGame import SnakeGame
 from DeepQAgent import Agent
+from DeepQAgent import DeepQNetworkConv
 import time
 import keyboard
 from os import system
@@ -28,16 +29,16 @@ if(gameGameover):
     input()
 '''
 
-amountOfGames = 5000
+amountOfGames = 10000
 snakeGameSize = 10
 game = SnakeGame(snakeGameSize,False)
-loadModel = True
+loadModel = False
 
 #memSize 5000 gamma .92 epsilonMin .07 no sucsess
 
 
-agent = Agent(gamma=0.93,epsilon=1,lr=1e-3,inputDims=(11,10),epsilonDec=1e-4,memSize=100000,
-              batchSize=128,epsilonMin=0.2,fc1Dims=256,fc2Dims=256,fc3Dims=128,replace=100,nActions=3)
+agent = Agent(gamma=0.99,epsilon=1,lr=1e-3,inputDims=(11,10),epsilonDec=1e-4,memSize=10000,
+              batchSize=128,epsilonMin=0.3,replace=100,nActions=3,network=DeepQNetworkConv)
 
 obs = game.getObservation()
 agent.prepNetworksForLoad(obs)
@@ -51,20 +52,24 @@ doPrint = False
 scores = []
 fruits = []
 matchNumbers = []
+qValues = []
 
 
 for i in range(amountOfGames):
     #print("Game:",i)
     if(i == 3000):
+        print("Changed epsilonMin to",0.2)
+        agent.changeEpsMin(0.2)
+    elif(i == 5000):
         print("Changed epsilonMin to",0.1)
         agent.changeEpsMin(0.1)
-    elif(i == 4000):
+    elif(i == 7000):
         print("Changed epsilonMin to",0.05)
         agent.changeEpsMin(0.05)
     done = False
     observation = game.getObservation()
-    lastAction = 0
-    direction = 0
+    #lastAction = 0
+    #direction = 0
     '''
     if i > 1000 and i < 1100:
         doPrint = True
@@ -79,13 +84,13 @@ for i in range(amountOfGames):
         else:
             doPrint = False
         
-        action = agent.chooseAction(observation)
-        
+        action,Q = agent.chooseAction(observation)
+        qValues.append(Q)
         reward, observation_, done = game.step(action,doPrint)
         agent.storeTransition(observation, action, reward, observation_, done)
         observation = observation_
         agent.learn()
-        lastAction = action
+        #lastAction = action
         if doPrint:
             time.sleep(0.1)
     score = game.getScore()
@@ -109,10 +114,15 @@ print("Done!")
 #plt.plot(matchNumbers,scores,'bo')
 fig1,ax1 = plt.subplots()
 fig2,ax2 = plt.subplots()
+fig3,ax3 = plt.subplots()
 ax1.plot(matchNumbers,scores,'bo')
 ax1.set_title("Scores")
 ax2.plot(matchNumbers, fruits,'go')
 ax2.set_title("Fruits")
+ax3.plot(qValues)
+ax3.set_title("Q Values for decision")
+
+
 #plt.plot(matchNumbers,fruits,'go')
 plt.show()
 

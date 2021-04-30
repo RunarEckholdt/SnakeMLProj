@@ -306,7 +306,9 @@ class SnakeGame:
         directionObservation = np.zeros(self.__gameSize)
         directionObservation[self.__snakeDirection] = 1
         directionObservation[4] = 1 - (self.__snakeMap.snake.life / snakeMaxLife)
-        return np.append(self.__snakeMap.getMap(),[directionObservation],axis=0)
+        obs = np.append(self.__snakeMap.getMap(),[directionObservation],axis=0)
+        obs = np.array(obs,dtype=np.float32)
+        return obs
     
     def getScore(self):
         return self.__score
