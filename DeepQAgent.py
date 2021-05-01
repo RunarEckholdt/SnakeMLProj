@@ -167,22 +167,30 @@ class Agent():
     def storeTransition(self,state,action,reward,newState,done):
         self.memory.storeTransition(state,action,reward,newState,done)
         
-    def chooseAction(self,observation,returnQ):
+    def chooseAction(self,observation,returnQ=False,returnIfEpsilon=False):
         state = np.array([observation])
         networkActionQ = self.qEval(state)[0]
         networkAction = tf.math.argmax(networkActionQ).numpy()
+        
         if(np.random.random() < self.epsilon):
             #chose random action that is not the same as networkAction
             action = np.random.choice(self.actionSpace[self.actionSpace != networkAction])
-            
+            wasEpsilon = True
         else:
             state = np.array([observation])
             action = networkAction
-            #actions = self.qEval(net)
-            #print(actions)
-            #action = tf.math.argmax(actions,axis=1).numpy()[0]
+            wasEpsilon = False
             
-        return action,networkActionQ.numpy()[action] if returnQ else action
+            
+        if(returnQ and returnIfEpsilon):
+            return action,networkActionQ.numpy()[action],wasEpsilon
+        elif(returnQ):
+            return action,networkActionQ.numpy()[action]
+        elif(returnIfEpsilon):
+            return action,wasEpsilon
+        else:
+            return action
+        
     
     def learn(self):
         if(self.memory.memCntr < self.batchSize):

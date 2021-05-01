@@ -37,7 +37,7 @@ loadModel = True
 #memSize 5000 gamma .92 epsilonMin .07 no sucsess
 
 
-agent = Agent(gamma=0.93,epsilon=0.4,lr=1e-3,inputDims=(11,10),epsilonDec=1e-4,memSize=10000,
+agent = Agent(gamma=0.93,epsilon=0.3,lr=1e-3,inputDims=(11,10),epsilonDec=1e-4,memSize=10000,
               batchSize=64,epsilonMin=0.1,replace=100,nActions=3,network=DeepQNetworkConv)
 
 obs = game.getObservation()
@@ -65,9 +65,9 @@ for i in range(amountOfGames):
         print("Changed epsilonMin to",0.1)
         agent.changeEpsMin(0.1)
     '''
-    if(i == 10000):
-        print("Changed epsilonMin to",0.05)
-        agent.changeEpsMin(0.05)
+    # if(i == 10000):
+    #     print("Changed epsilonMin to",0.05)
+    #     agent.changeEpsMin(0.05)
     # elif(i == 10000):
     #     print("Changed epsilonMin to 0.01")
     #     agent.changeEpsMin(0.01)
@@ -90,7 +90,14 @@ for i in range(amountOfGames):
         else:
             doPrint = False
         
-        action,Q = agent.chooseAction(observation,True)
+        while True:
+            action,Q,wasEpsilon = agent.chooseAction(observation,returnQ=True,returnIfEpsilon=True)
+            if(not wasEpsilon):
+                break
+            elif(not game.snakeMap.predictDeathByAction(action)):
+                break
+            
+        
         qValues.append(Q)
         reward, observation_, done = game.step(action,doPrint)
         agent.storeTransition(observation, action, reward, observation_, done)
@@ -106,7 +113,7 @@ for i in range(amountOfGames):
     scores.append(score)
     fruits.append(game.getFruitsEaten())
     matchNumbers.append(i)
-    print("Game %i ended with score %i" %(i,score))
+    print(f"Game {i:>5} ended with score: {score:>10}")
     '''
     if((i//amountOfGames)* 100 != percentage):
         percentage = i//amountOfGames * 100
@@ -141,8 +148,11 @@ while(not yPressed and not nPressed):
     if(keyboard.is_pressed('y')):
         yPressed = True
         agent.saveModel()
+        print("Model is saved")
     elif(keyboard.is_pressed('n')):
         nPressed = True
+        print("Model was not saved")
+input()
 
 
     

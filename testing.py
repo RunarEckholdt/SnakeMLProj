@@ -11,12 +11,12 @@ from SnakeGame import SnakeGame
 #import tensorflow as tf
 #from DeepQAgent import DeepQNetworkConv
 #import time
-#import numpy as np
+import numpy as np
 
+a = np.array([2,-6,33,5,105,-45])
 
-game = SnakeGame(10,False)
-
-game.printMap()
+for n in a:
+    print(f"Tall:{n:>5}")
 
 
 input()
