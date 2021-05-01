@@ -152,6 +152,8 @@ while(not yPressed and not nPressed):
     elif(keyboard.is_pressed('n')):
         nPressed = True
         print("Model was not saved")
+input("Press enter to see replay of best game:")
+game.bestReplay.replay()
 input()
 
 
