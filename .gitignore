@@ -1,5 +1,7 @@
 Statistics/
 modelBackup/
 checkpoint
-dueling_dqn.data-00000-of-00001
-dueling_dqn.index
+*.data-00000-of-00001
+*.index
+testing.py
+*.gif

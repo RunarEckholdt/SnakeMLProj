@@ -9,7 +9,8 @@ import numpy as np
 import random
 import keyboard
 import time
-
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from os import system
         
         
@@ -75,7 +76,7 @@ class Coordinate:
 
 class Snake:
     def __init__(self,startCoordinate,startDirection):
-        #print("Snake Constructor called")
+        
         if(type(startCoordinate)==Coordinate):
             self.__headPosition = startCoordinate
         elif(type(startCoordinate)==tuple or type(startCoordinate)==list):
@@ -93,7 +94,7 @@ class Snake:
             self.__bodyPositions.append(self.__headPosition + [-1,0])
         elif(startDirection == directionDict["left"]):
             self.__bodyPosition.append(self.__headPosition + [0,1])
-        #self.__bodyPositions = [Coordinate(self.__headPosition.getY() +1,self.__headPosition.getX())]
+        
         self.__direction = startDirection
         
         self.life = snakeMaxLife
@@ -106,7 +107,7 @@ class Snake:
        
         for i in range(len(self.__bodyPositions)):
             self.__bodyPositions[i], lastBodyPosition = lastBodyPosition , self.__bodyPositions[i]
-            #print(lastBodyPosition)
+            
         self.__behindTailPosition = lastBodyPosition
         self.__direction = vectorToDirectionDict[(self.__headPosition.getY()-self.__bodyPositions[0].getY(),
                                                   self.__headPosition.getX()-self.__bodyPositions[0].getX())]
@@ -137,6 +138,8 @@ class GameReplay:
     def __init__(self,startScene):
         self.gameScenes = [startScene.copy()]
         self.score = 0
+        
+        
        
     def addGameScene(self,scene):
         if(type(scene) != np.ndarray):
@@ -153,12 +156,42 @@ class GameReplay:
                 mapStr += "\n"
             system('cls')
             print(mapStr)
-            time.sleep(1)        
+            time.sleep(1)  
+    def animate(self,saveAnimation=False):
+        
+        self.fig = plt.figure()
+        
+        
+        frames = np.arange(0,len(self.gameScenes),1)
+        a = animation.FuncAnimation(self.fig,self.__update,frames=frames,interval=500)
+        plt.show()
+        if saveAnimation:
+            gifName = input("Enter name for animation file:")
+            writerGif = animation.PillowWriter(fps=2)
+            a.save(gifName+".gif",writer=writerGif)
+        return a
+    def __update(self,frameNumber):
+        self.fig.clf()
+        ax = self.fig.gca()
+        
+        for y,layer in enumerate(self.gameScenes[frameNumber]):
+            for x,value in enumerate(layer):
+                if value == mapValues["wall"]:
+                    ax.plot(y,x,color='#000000',marker='o',markersize=10)
+                elif value == mapValues["body"]:
+                    ax.plot(y,x,color='#00FF00',marker='o',markersize=4)
+                elif value == mapValues["fruit"]:
+                    ax.plot(y,x,color='#FF0000',marker='o',markersize=6)
+                elif value == mapValues["head"]:
+                    ax.plot(y,x,color='#00FF00',marker='o',markersize=6)
+        ax.axis('off')
+                
+        
         
 
 class SnakeMap:
     def __init__(self,size,mapForUser):
-        #print("Snake Map Constructor called")
+        
         self.fruitsEaten = 0
         
         self.__map = np.full(shape=(size,size),fill_value=mapValues["empty"],dtype=np.int32)

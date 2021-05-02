@@ -16,25 +16,14 @@ import matplotlib.pyplot as plt
 
 
 
-'''    
-game = SnakeGame()
-gameExited = False
-gameGameover = False
-while (not gameExited and not gameGameover):
-    gameExited = game.updateDirection()
-    gameGameover = game.checkForTick()
-    
-if(gameGameover):
-    print("Game Over!")
-    input()
-'''
+
 
 amountOfGames = 40000
 snakeGameSize = 10
 game = SnakeGame(snakeGameSize,False)
 loadModel = True
 
-#memSize 5000 gamma .92 epsilonMin .07 no sucsess
+
 
 
 agent = Agent(gamma=0.93,epsilon=0.3,lr=1e-3,inputDims=(11,10),epsilonDec=1e-4,memSize=10000,
@@ -45,7 +34,7 @@ agent.prepNetworksForLoad(obs)
 if(loadModel):
     agent.loadModel()
 
-#percentage = 0
+
 
 doPrint = False
 
@@ -56,7 +45,7 @@ qValues = []
 
 
 for i in range(amountOfGames):
-    #print("Game:",i)
+
     '''
     if(i == 3000):
         print("Changed epsilonMin to",0.2)
@@ -74,21 +63,13 @@ for i in range(amountOfGames):
     
     done = False
     observation = game.getObservation()
-    #lastAction = 0
-    #direction = 0
-    '''
-    if i > 1000 and i < 1100:
-        doPrint = True
-    elif i > 2000 and i < 2100:
-        doPrint = True
-    else:
-        doPrint = False
-    '''
+
+    
     while not done:
         if(keyboard.is_pressed('p')):
-            doPrint = True
-        else:
-            doPrint = False
+            doPrint = not doPrint
+            time.sleep(0.5)
+        
         
         while True:
             action,Q,wasEpsilon = agent.chooseAction(observation,returnQ=True,returnIfEpsilon=True)
@@ -103,7 +84,7 @@ for i in range(amountOfGames):
         agent.storeTransition(observation, action, reward, observation_, done)
         observation = observation_
         agent.learn()
-        #lastAction = action
+       
         if doPrint:
             time.sleep(0.1)
     score = game.getScore()
@@ -114,17 +95,12 @@ for i in range(amountOfGames):
     fruits.append(game.getFruitsEaten())
     matchNumbers.append(i)
     print(f"Game {i:>5} ended with score: {score:>10}")
-    '''
-    if((i//amountOfGames)* 100 != percentage):
-        percentage = i//amountOfGames * 100
-        system("cls")
-        print(str(i) + "%")
-        '''
+   
     game.reset()
 
 
 print("Done!")
-#plt.plot(matchNumbers,scores,'bo')
+
 fig1,ax1 = plt.subplots()
 fig2,ax2 = plt.subplots()
 fig3,ax3 = plt.subplots()
@@ -136,10 +112,10 @@ ax3.plot(qValues)
 ax3.set_title("Q Values for decision")
 
 
-#plt.plot(matchNumbers,fruits,'go')
+
 plt.show()
 
-#inp = input("Save model (y/n): ").lower()
+
 yPressed = False
 nPressed = False
 
@@ -153,8 +129,8 @@ while(not yPressed and not nPressed):
         nPressed = True
         print("Model was not saved")
 input("Press enter to see replay of best game:")
-game.bestReplay.replay()
-input()
+game.bestReplay.animate(saveAnimation=True)
+
 
 
     

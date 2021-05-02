@@ -13,8 +13,7 @@ import numpy as np
 import tensorflow.keras.models as kModel
 import time
 
-#print(tf.__version__)
-#input()
+
 try:
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -195,7 +194,6 @@ class Agent():
         
         #if it has learned x amount of times, put main network's weights into the qNext network
         if(self.learnStepCounter % self.replace == 0):
-            #print(self.qEval.get_weights())
             self.qNext.set_weights(self.qEval.get_weights())
         
         
@@ -220,11 +218,10 @@ class Agent():
         
         #itterates over each sample changing the q value for each action done
         # to be de possible best outcome of future actions
-        for idx,terminal in enumerate(dones):
-            #print(idx)
+        for i,terminal in enumerate(dones):
             if terminal:
-                qNext[idx] = 0.0
-            qTarget[idx][actions[idx]] = rewards[idx] + self.gamma*qNext[idx]
+                qNext[i] = 0.0
+            qTarget[i][actions[i]] = rewards[i] + self.gamma*qNext[i]
         
         
         self.qEval.train_on_batch(states,qTarget)
@@ -242,12 +239,8 @@ class Agent():
         self.qNext(observation)
         
     def loadModel(self):
-        #print("Before loading: \n")
-        #print(self.qEval.get_weights())
         self.qEval.load_weights(self.fname)
-        #print("\n\n\n After loading: \n")
-        #print(self.qEval.get_weights())
-        #self.qNext.set_weights(self.qEval.get_weights())
+        
         
         
         
