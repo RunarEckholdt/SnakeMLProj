@@ -54,7 +54,8 @@ printEps = False
 scores = []
 fruits = []
 matchNumbers = []
-qValues = []
+#qValues = []
+averageQPerMatch = []
 
 
 for i in range(amountOfGames):
@@ -77,6 +78,7 @@ for i in range(amountOfGames):
     done = False
     observation = game.getObservation()
     
+    matchQValues = []
     
     while not done:
         
@@ -101,9 +103,11 @@ for i in range(amountOfGames):
                 break
             elif(not game.snakeMap.predictDeathByAction(action)):
                 break
-            
         
-        qValues.append(Q)
+        
+        matchQValues.append(Q)
+        
+        #qValues.append(Q)
         game.inputQValues(qList)
         reward, observation_, done = game.step(action,doPrint)
         agent.storeTransition(observation, action, reward, observation_, done)
@@ -115,6 +119,8 @@ for i in range(amountOfGames):
     score = game.getScore()
     if(keyboard.is_pressed("Esc")):
         break
+    
+    averageQPerMatch.append((sum(matchQValues)/len(matchQValues)))
     
     scores.append(score)
     fruits.append(game.getFruitsEaten())
@@ -140,8 +146,9 @@ ax1.scatter(matchNumbers,scores,color='b',marker='o',alpha=0.5)
 ax1.set_title("Scores")
 ax2.scatter(matchNumbers, fruits,color='g',marker='o',alpha=0.5)
 ax2.set_title("Fruits")
-qCount=[i for i in range(len(qValues))]
-ax3.scatter(qCount,qValues,color='r',marker='o',alpha=0.1)
+#qCount=[i for i in range(len(qValues))]
+#ax3.scatter(qCount,qValues,color='r',marker='o',alpha=0.1)
+ax3.scatter(matchNumbers,averageQPerMatch,color='r',marker='o',alpha=0.1)
 ax3.set_title("Q Values for decision")
 
 
