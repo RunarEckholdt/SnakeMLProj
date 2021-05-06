@@ -25,10 +25,17 @@ mapValuesP = {mapValues["empty"]:" ",
                mapValues["head"]: "H",
                mapValues["body"]: "B",
                mapValues["fruit"]:"F"}
- 
 
+#normal move punishment 
+nmP = -5
 
+#die punishment
+dmP = -1000
 
+#fruit reward
+fmR = 1000
+
+#how many times the snake can move without eating fruit before he dies
 snakeMaxLife = 70
 
 class Fruit:
@@ -47,27 +54,27 @@ class Fruit:
 
 class Coordinate:
     def __init__(self,y,x):
-        self.__y = y
-        self.__x = x
+        self.y = y
+        self.x = x
     
     def getX(self):
-        return self.__x
+        return self.x
     
     
     def getY(self):
-        return self.__y
+        return self.y
     
     
     def __add__(self,movement):
         if(type(movement) != list and type(movement) != tuple):
             raise Exception("Addition on coordinate must be used on a tuple or list")
-        return Coordinate(self.__y + movement[0], self.__x + movement[1])
+        return Coordinate(self.y + movement[0], self.x + movement[1])
     
     def __str__(self):
-        return "Y: "+ str(self.__y) + " X: " + str(self.__x)
+        return "Y: "+ str(self.y) + " X: " + str(self.x)
     
     def __eq__(self,coord):
-        return self.__y == coord.getY() and self.__x == coord.getX()
+        return self.y == coord.getY() and self.x == coord.getX()
     
     
     
@@ -132,21 +139,30 @@ class Snake:
             
     def getOldTailPosition(self):
         return self.__behindTailPosition
-        
+ 
+    
+
+     
           
 class GameReplay:
     def __init__(self,startScene):
         self.gameScenes = [startScene.copy()]
         self.score = 0
-        
+        self.fruitCount = [0]
+        self.qValues = []
         
        
-    def addGameScene(self,scene):
+    def addGameScene(self,scene,fruitsEaten : int):
         if(type(scene) != np.ndarray):
             raise Exception("Scene must be a numpy array")
         self.gameScenes.append(scene.copy())
+        self.fruitCount.append(fruitsEaten)
     def setScore(self, score):
         self.score = score
+        
+    def addQEntities(self,qEntityList : list):
+        self.qValues.append(qEntityList)
+    
     def replay(self):
         for gameScene in self.gameScenes:
             mapStr = ""
@@ -173,19 +189,36 @@ class GameReplay:
     def __update(self,frameNumber):
         self.fig.clf()
         ax = self.fig.gca()
-        
+        y = self.gameScenes[0].shape[0] - 1
         for y,layer in enumerate(self.gameScenes[frameNumber]):
             for x,value in enumerate(layer):
                 if value == mapValues["wall"]:
-                    ax.plot(y,x,color='#000000',marker='o',markersize=10)
+                    ax.plot(x,y,color='#000000',marker='o',markersize=10)
                 elif value == mapValues["body"]:
-                    ax.plot(y,x,color='#00FF00',marker='o',markersize=4)
+                    ax.plot(x,y,color='#00FF00',marker='o',markersize=4)
                 elif value == mapValues["fruit"]:
-                    ax.plot(y,x,color='#FF0000',marker='o',markersize=6)
+                    ax.plot(x,y,color='#FF0000',marker='o',markersize=6)
                 elif value == mapValues["head"]:
-                    ax.plot(y,x,color='#00FF00',marker='o',markersize=6)
+                    ax.plot(x,y,color='#00FF00',marker='o',markersize=6)
+        
+        fruits = self.fruitCount[frameNumber]
+        ax.text(0,10,f"Fruits eaten: {fruits:>2}")
+        if(frameNumber < len(self.qValues)):
+            maxQ = max(self.qValues[frameNumber][0][0],
+                       self.qValues[frameNumber][1][0],
+                       self.qValues[frameNumber][2][0])
+
+        if(len(self.qValues) > 0 and frameNumber < len(self.qValues)):
+            for q,coordinate in self.qValues[frameNumber]:
+                plotText = f"{q:>3.0f}"
+                ax.text(coordinate.x,
+                        coordinate.y,
+                        plotText,
+                        size=8 if q != maxQ else 12
+                        )
+        
         ax.axis('off')
-                
+        
         
         
 
@@ -208,13 +241,13 @@ class SnakeMap:
         
     
     def doTick(self,action):
-        movement = self.__calculateMovement(action)   
+        movement = self.calculateMovement(action)   
         newPosition = self.snake.move(movement)
         additionalScore = 0
         
         if(self.atPos(newPosition) == mapValues["wall"] or self.atPos(newPosition) == mapValues["body"]):
             self.__gameover = True
-            additionalScore = -1000
+            additionalScore = dmP
             
         else:
             self.__changeMap(self.snake.getOldTailPosition(),mapValues["empty"])
@@ -222,7 +255,7 @@ class SnakeMap:
         self.__updateSnake()
        
         if(newPosition == self.__fruit.getPosition()):
-            additionalScore = 1000
+            additionalScore = fmR
 
             self.fruitsEaten += 1
             self.snake.eatFruit()
@@ -234,9 +267,9 @@ class SnakeMap:
             self.snake.life -= 1
             if self.snake.life <= 0:
                 self.__gameover = True
-                additionalScore = -1000
+                additionalScore = dmP
             else:
-                additionalScore = -1
+                additionalScore = nmP
         self.__updateFruit()
         return additionalScore,self.snake.getDirection()
         
@@ -283,7 +316,7 @@ class SnakeMap:
         self.__map[1:self.__size-1,0] = mapValues["wall"]
         self.__map[1:self.__size-1,self.__size-1] = mapValues["wall"]
      
-    def __calculateMovement(self,action):
+    def calculateMovement(self,action):
         snakeDirection = self.snake.getDirection()
         #if left
         if(action == 0):
@@ -306,7 +339,7 @@ class SnakeMap:
         return movement
     #returns True if it will die from action else False
     def predictDeathByAction(self,action):
-        movement = self.__calculateMovement(action)
+        movement = self.calculateMovement(action)
         
         snakeHeadPosition = self.snake.getHeadPosition()
         
@@ -385,7 +418,7 @@ class SnakeGame:
             system('cls')
             print("Score:",self.__score)
             print(self.snakeMap)
-        self.__currentReplay.addGameScene(self.snakeMap.getMap())
+        self.__currentReplay.addGameScene(self.snakeMap.getMap(),self.snakeMap.fruitsEaten)
         return reward,newObservation,done
     
     
@@ -407,8 +440,14 @@ class SnakeGame:
         print(self.snakeMap)
             
             
-        
-        
+    def inputQValues(self,qValues):
+        l = []
+        for i,q in enumerate(qValues):
+            hP = self.snakeMap.snake.getHeadPosition()
+            movement = self.snakeMap.calculateMovement(i)
+            nP = hP + movement
+            l.append((q,nP))
+        self.__currentReplay.addQEntities(l)
     
     
 

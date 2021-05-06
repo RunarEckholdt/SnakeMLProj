@@ -22,12 +22,23 @@ amountOfGames = 40000
 snakeGameSize = 10
 game = SnakeGame(snakeGameSize,False)
 loadModel = True
+saveAnimation = True
 
 
 
+agent = Agent(gamma=0.91,
+              epsilon=0.1,
+              lr=1e-3,
+              inputDims=(11,10),
+              epsilonDec=1e-6,
+              memSize=10000,
+              batchSize=64,
+              epsilonMin=0.05,
+              replace=100,
+              nActions=3,
+              network=DeepQNetworkConv)
 
-agent = Agent(gamma=0.93,epsilon=0.3,lr=1e-3,inputDims=(11,10),epsilonDec=1e-4,memSize=10000,
-              batchSize=64,epsilonMin=0.1,replace=100,nActions=3,network=DeepQNetworkConv)
+
 
 obs = game.getObservation()
 agent.prepNetworksForLoad(obs)
@@ -37,6 +48,8 @@ if(loadModel):
 
 
 doPrint = False
+printQValues = False
+printEps = False
 
 scores = []
 fruits = []
@@ -63,16 +76,27 @@ for i in range(amountOfGames):
     
     done = False
     observation = game.getObservation()
-
+    
     
     while not done:
+        
         if(keyboard.is_pressed('p')):
             doPrint = not doPrint
+            time.sleep(0.5)
+        if(keyboard.is_pressed('e')):
+            printEps= not printEps
+            time.sleep(0.5)
+        if(keyboard.is_pressed('q')):
+            printQValues = not printQValues
             time.sleep(0.5)
         
         
         while True:
-            action,Q,wasEpsilon = agent.chooseAction(observation,returnQ=True,returnIfEpsilon=True)
+            action,Q,wasEpsilon,qList = agent.chooseAction(observation,
+                                                     returnQ=True,
+                                                     returnIfEpsilon=True,
+                                                     returnQList=True,
+                                                     printQValues=printQValues)
             if(not wasEpsilon):
                 break
             elif(not game.snakeMap.predictDeathByAction(action)):
@@ -80,6 +104,7 @@ for i in range(amountOfGames):
             
         
         qValues.append(Q)
+        game.inputQValues(qList)
         reward, observation_, done = game.step(action,doPrint)
         agent.storeTransition(observation, action, reward, observation_, done)
         observation = observation_
@@ -94,7 +119,14 @@ for i in range(amountOfGames):
     scores.append(score)
     fruits.append(game.getFruitsEaten())
     matchNumbers.append(i)
-    print(f"Game {i:>5} ended with score: {score:>10}")
+    printStr = f"Game {i:>5} ended with score: {score:>10}"
+    
+    
+    if(printEps):
+        eps = agent.epsilon
+        printStr += f" Epsilon{eps:>3.2f}"
+    
+    print(printStr)
    
     game.reset()
 
@@ -104,11 +136,12 @@ print("Done!")
 fig1,ax1 = plt.subplots()
 fig2,ax2 = plt.subplots()
 fig3,ax3 = plt.subplots()
-ax1.plot(matchNumbers,scores,'bo')
+ax1.scatter(matchNumbers,scores,color='b',marker='o',alpha=0.5)
 ax1.set_title("Scores")
-ax2.plot(matchNumbers, fruits,'go')
+ax2.scatter(matchNumbers, fruits,color='g',marker='o',alpha=0.5)
 ax2.set_title("Fruits")
-ax3.plot(qValues)
+qCount=[i for i in range(len(qValues))]
+ax3.scatter(qCount,qValues,color='r',marker='o',alpha=0.1)
 ax3.set_title("Q Values for decision")
 
 
@@ -129,7 +162,7 @@ while(not yPressed and not nPressed):
         nPressed = True
         print("Model was not saved")
 input("Press enter to see replay of best game:")
-game.bestReplay.animate(saveAnimation=True)
+game.bestReplay.animate(saveAnimation=saveAnimation)
 
 
 

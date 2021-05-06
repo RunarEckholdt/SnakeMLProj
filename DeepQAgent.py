@@ -162,7 +162,7 @@ class Agent():
     def storeTransition(self,state,action,reward,newState,done):
         self.memory.storeTransition(state,action,reward,newState,done)
         
-    def chooseAction(self,observation,returnQ=False,returnIfEpsilon=False):
+    def chooseAction(self,observation,returnQ=False,returnIfEpsilon=False,returnQList=False,printQValues=False):
         state = np.array([observation])
         networkActionQ = self.qEval(state)[0]
         networkAction = tf.math.argmax(networkActionQ).numpy()
@@ -175,14 +175,26 @@ class Agent():
             state = np.array([observation])
             action = networkAction
             wasEpsilon = False
+        
+        if(printQValues):
+            printStr = f"Q Values for actions | Epsilon-greed {wasEpsilon}"
+            for i,q in enumerate(networkActionQ):
+                printStr += f"\n\tAction {i:>7} Q:{q:>7} "
+            print(printStr)
+            time.sleep(5)
             
-            
-        if(returnQ and returnIfEpsilon):
+        if(returnQ and returnIfEpsilon and returnQList):
+            return action,networkActionQ.numpy()[action],wasEpsilon,networkActionQ
+        elif(returnQ and returnIfEpsilon):
             return action,networkActionQ.numpy()[action],wasEpsilon
         elif(returnQ):
             return action,networkActionQ.numpy()[action]
+        elif(returnQ and returnQList):
+            return action,networkActionQ.numpy()[action],networkActionQ
         elif(returnIfEpsilon):
             return action,wasEpsilon
+        elif(returnIfEpsilon and returnQList):
+            return action,wasEpsilon,networkActionQ
         else:
             return action
         
