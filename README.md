@@ -20,4 +20,13 @@ Parameters for the agent:
   replace : Amount of training the network must do before using the newly trained network to predict the q values. (Assign weights of qEval into the qNext network)
   network : The neural network to use in the agent.
   
+Packages needed for the project:
+  Tensorflow
+  Numpy
+  Keyboard
+  matplotlib
+  random
+  time
+  os
+  
   
