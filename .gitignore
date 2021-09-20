@@ -5,3 +5,4 @@ checkpoint
 *.index
 testing.py
 *.gif
+.pyc
